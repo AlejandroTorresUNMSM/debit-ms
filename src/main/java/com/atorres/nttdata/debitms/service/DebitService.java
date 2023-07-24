@@ -5,8 +5,11 @@ import com.atorres.nttdata.debitms.client.FeignApiProdActive;
 import com.atorres.nttdata.debitms.client.FeignApiProdPasive;
 import com.atorres.nttdata.debitms.exception.CustomException;
 import com.atorres.nttdata.debitms.model.DebitDto;
+import com.atorres.nttdata.debitms.model.RequestAddDebit;
 import com.atorres.nttdata.debitms.model.RequestDebit;
+import com.atorres.nttdata.debitms.model.accountms.AccountDto;
 import com.atorres.nttdata.debitms.model.clientms.ClientDto;
+import com.atorres.nttdata.debitms.model.dao.DebitDao;
 import com.atorres.nttdata.debitms.repository.DebitRepository;
 import com.atorres.nttdata.debitms.utils.RequestMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +18,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -55,6 +61,63 @@ public class DebitService {
 						.map(requestMapper::toDto);
 	}
 
+	/**
+	 * Metodo para obtener el balance de la cuenta principal
+	 * @param debitId debito id
+	 * @return balance
+	 */
+	public Mono<BigDecimal> getMainBalance(String debitId){
+		return debitRepository.findById(debitId)
+						.switchIfEmpty(Mono.error(new CustomException(HttpStatus.NOT_FOUND, "No se encontro el producto")))
+						.flatMap(debit -> feignApiProdPasive.getAccount(debit.getMainProduct()).single())
+						.map(AccountDto::getBalance);
+	}
+	/**
+	 * Metodo para obtener el balance de todas la cuentas asociadas
+	 * @param debitId debito id
+	 * @return balance
+	 */
+	public Mono<BigDecimal> getAllBalance(String debitId){
+		return debitRepository.findById(debitId)
+						.switchIfEmpty(Mono.error(new CustomException(HttpStatus.NOT_FOUND, "No se encontro el producto")))
+						.map(DebitDao::getProductList)
+						.flatMapMany(Flux::fromIterable)
+						.flatMap(productId -> feignApiProdPasive.getAccount(productId)
+										.map(AccountDto::getBalance)
+										.defaultIfEmpty(BigDecimal.ZERO))
+						.reduce(BigDecimal.ZERO, BigDecimal::add);
+	}
+	/**
+	 * Metodo que agrega un producto al debit y lo guarda
+	 * @param request request para agregar productos
+	 * @return  debitdto
+	 */
+	public Mono<DebitDto> addAccountDebit(RequestAddDebit request){
+		return debitRepository.findByClient(request.getClient())
+						.filter(debitDao -> debitDao.getId().equals(request.getDebit()))
+						.single()
+						.switchIfEmpty(Mono.error(new CustomException(HttpStatus.NOT_FOUND, "No se encontro el debito")))
+						.flatMap(debitDao -> updateProdList(debitDao, request.getProduct()))
+						.flatMap(debitDao -> debitRepository.save(debitDao))
+						.map(requestMapper::toDto);
+	}
+
+	/**
+	 * Metodo que verifica y actualiza el producto a agregar en el debitdao
+	 * @param debitDao debito
+	 * @param accountId account id
+	 * @return debitdao
+	 */
+	private Mono<DebitDao> updateProdList(DebitDao debitDao,String accountId){
+		return checkAccountAdd(debitDao.getClient(), accountId)
+						.map(account -> {
+							List<String> listProduct = debitDao.getProductList();
+							listProduct.add(account);
+							debitDao.setProductList(listProduct);
+							return debitDao;
+						});
+
+	}
 
 	/**
 	 * Metodo que verifica que el cliente no tenga deudas vencidas y retorna un client

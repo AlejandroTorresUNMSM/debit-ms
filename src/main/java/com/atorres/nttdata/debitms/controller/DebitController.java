@@ -1,6 +1,8 @@
 package com.atorres.nttdata.debitms.controller;
 
 import com.atorres.nttdata.debitms.model.DebitDto;
+import com.atorres.nttdata.debitms.model.RequestAddDebit;
+import com.atorres.nttdata.debitms.model.RequestBalance;
 import com.atorres.nttdata.debitms.model.RequestDebit;
 import com.atorres.nttdata.debitms.service.DebitService;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/debit")
@@ -40,5 +44,36 @@ public class DebitController {
 						.doOnSuccess(v -> log.info("Debito creado con exito"));
 	}
 
+	/**
+	 * Metodo para traer el balance de la cuenta principal
+	 * @param debitId id debito
+	 * @return balance
+	 */
+	@GetMapping(value = "/main-balance/{debitId}",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public Mono<BigDecimal> getMainProduct(@PathVariable String debitId){
+		return debitService.getMainBalance(debitId)
+						.doOnSuccess(v -> log.info("Balance de la cuenta principal obtenida con exito"));
+	}
+
+	/**
+	 * Metodo que trae el balance de todas las cuentas en la tarjeta debito
+	 * @param debitId debit id
+	 * @return balance total
+	 */
+	@GetMapping(value = "/all-balance/{debitId}",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public Mono<BigDecimal> getAllBalance(@PathVariable String debitId){
+		return debitService.getAllBalance(debitId)
+						.doOnSuccess(v -> log.info("Balance de la cuenta principal obtenida con exito"));
+	}
+	/**
+	 * Metodo para agregar una cuenta al debito
+	 * @param request requet para agregar una cuenta
+	 * @return debitdto
+	 */
+	@PatchMapping(value = "/add")
+	public Mono<DebitDto> addProductDebit(@RequestBody RequestAddDebit request){
+		return debitService.addAccountDebit(request)
+						.doOnSuccess(v -> log.info("Cuenta agregada con exito"));
+	}
 
 }
