@@ -1,12 +1,12 @@
 package com.atorres.nttdata.debitms.model;
 
 import lombok.Data;
-
-import java.util.ArrayList;
+import java.util.List;
 
 @Data
 public class DebitDto {
 	private String id;
 	private String client;
-	private ArrayList<String> productList;
+	private String mainProduct;
+	private List<String> productList;
 }
