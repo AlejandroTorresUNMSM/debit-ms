@@ -38,10 +38,20 @@ public class DebitService {
 
 	/**
 	 * Metodo que trae un debitdto de un cliente
+	 * @param debitId id cliente
+	 * @return debitdto
+	 */
+	public Mono<DebitDto> getDebit(String debitId){
+		return debitRepository.findById(debitId)
+						.switchIfEmpty(Mono.error(new CustomException(HttpStatus.NOT_FOUND, "No tiene tarjeta debito")))
+						.map(requestMapper::toDto);
+	}
+	/**
+	 * Metodo que trae todos los debito asociados al cliente
 	 * @param clientId id cliente
 	 * @return debitdto
 	 */
-	public Flux<DebitDto> getDebit(String clientId){
+	public Flux<DebitDto> getDebitClient(String clientId){
 		return debitRepository.findAll()
 						.filter(deb -> deb.getClient().equals(clientId))
 						.switchIfEmpty(Mono.error(new CustomException(HttpStatus.NOT_FOUND, "No tiene tarjeta debito")))

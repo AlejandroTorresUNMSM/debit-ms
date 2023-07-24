@@ -20,16 +20,26 @@ import java.math.BigDecimal;
 public class DebitController {
 	@Autowired
 	private DebitService debitService;
-
 	/**
-	 * Metodo para traer la tarjeta debito
+	 * Metodo para traer debito por su id
+	 * @param debitId id cliente
+	 * @return debitdto
+	 */
+	@GetMapping(value = "/{debitId}",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public Mono<DebitDto> getDebit(
+					@PathVariable String debitId){
+		return debitService.getDebit(debitId)
+						.doOnNext(account -> log.info("Debito encontrada con exito"));
+	}
+	/**
+	 * Metodo para traer todas las tarjetas debito asociadas al cliente
 	 * @param clientId id cliente
 	 * @return debitdto
 	 */
-	@GetMapping(value = "/{clientId}",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-	public Flux<DebitDto> getDebit(
+	@GetMapping(value = "/client/{clientId}",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public Flux<DebitDto> getDebitClient(
 					@PathVariable String clientId){
-		return debitService.getDebit(clientId)
+		return debitService.getDebitClient(clientId)
 						.doOnNext(account -> log.info("Debito encontrada con exito"));
 	}
 
